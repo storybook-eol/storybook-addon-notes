@@ -1,0 +1,6 @@
+{
+  "kadirahq/storybook-addon-notes/notes-collection": [
+    {"sbKind": "Button", "sbStory": "Hello World", "notes": "Hello World Notes"},
+    {"sbKind": "Button", "sbStory": "Hello Earth", "notes": "Hello Earth Notes"}
+  ]
+}
