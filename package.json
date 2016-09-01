@@ -48,7 +48,9 @@
     "@kadira/storybook-addons": "^v1.5.0"
   },
   "dependencies": {
-    "babel-runtime": "^6.5.0"
+    "babel-runtime": "^6.5.0",
+    "lodash.debounce": "^4.0.8",
+    "uuid": "^2.0.2"
   },
   "main": "dist/index.js",
   "engines": {

@@ -1,5 +1,7 @@
 import React from 'react';
 import addons from '@kadira/storybook-addons';
+import uuid from 'uuid';
+import debounce from 'lodash.debounce';
 
 // addons, panels and events get unique names using a prefix
 export const ADDON_ID = 'kadirahq/storybook-addon-notes';
@@ -25,24 +27,37 @@ const styles = {
   },
   errorText: {
     color: '#C62828',
+  },
+  modifiedMessage: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    color: '#000',
+    opacity: 0,
+    fontSize: 12,
+    transition: 'opacity 0.5s',
   }
 };
 
 export class Notes extends React.Component {
   constructor(...args) {
     super(...args);
-    this.state = { modified: false, loading: false, errored: false, text: '' };
-    this.onAddNotes = this.onAddNotes.bind(this);
-    this.onTextChange = this.onTextChange.bind(this);
+    this.state = { loading: true, modified: false, errored: false, text: '' };
+    this.selection = null;
+    this.handleChanges = this.handleChanges.bind(this);
+    this.setStoryNotes = this.setStoryNotes.bind(this);
+    this.setStoryNotes = debounce(this.setStoryNotes, 500);
   }
 
   componentDidMount() {
     // Clear the current notes on every story change.
     this.stopListeningOnStory = this.props.api.onStory((kind, story) => {
+      this.selection = null;
       this.setState({ errored: false, loading: true, text: '' });
-      this.getStoryNotes(kind, story)
-        .then(text => this.onAddNotes(text))
-        .catch(err => this.onNetError(err));
+      const db = addons.getDatabase();
+      db.getCollection(COLLECTION_ID).get({sbKind: kind, sbStory: story})
+        .then(res => this.showFetchedNotes(kind, story, res[0]))
+        .catch(err => this.showLoadError(err));
     });
   }
 
@@ -54,36 +69,65 @@ export class Notes extends React.Component {
     this.unmounted = true;
   }
 
-  getStoryNotes(kind, story) {
+  setStoryNotes(id, kind, story, notes) {
     const db = addons.getDatabase();
-    return db.getCollection(COLLECTION_ID)
-      .get({sbKind: kind, sbStory: story})
-      .then(res => res[0] && res[0].notes || '');
+    const doc = { id, notes, sbKind: kind, sbStory: story };
+    db.getCollection(COLLECTION_ID).set(doc)
+      .then(doc => this.setState({ modified: false }));
   }
 
-  onAddNotes(text) {
-    this.setState({ errored: false, modified: false, loading: false, text });
+  showFetchedNotes(kind, story, doc) {
+    if (!doc) {
+      // no notes are saved for this story, start a new doc with new id
+      this.selection = { kind, story, id: uuid.v4() };
+      this.setState({ errored: false, loading: false, text: '' });
+    } else {
+      this.selection = { kind, story, id: doc.id };
+      this.setState({ errored: false, loading: false, text: doc.notes });
+    }
   }
 
-  onNetError(err) {
+  showLoadError(err) {
     const text = `Error: ${err.message}`;
-    this.setState({ errored: true, modified: false, loading: false, text });
+    this.setState({ errored: true, loading: false, text });
   }
 
-  onTextChange(e) {
-    this.setState({ modified: true, text: e.target.value });
+  handleChanges(e) {
+    const { id, kind, story } = this.selection;
+    const notes = e.target.value;
+    this.setState({ modified: true, text: notes });
+    this.setStoryNotes(id, kind, story, notes);
   }
 
-  render() {
-    const { text, errored, loading } = this.state;
+  renderTextarea() {
+    const { text, errored } = this.state;
     const textStyle = Object.assign({}, styles.textarea);
     if (errored) {
       Object.assign(textStyle, styles.errorText);
     }
+    return (
+      <textarea
+        style={textStyle}
+        value={text}
+        onChange={this.handleChanges}
+      />
+    );
+  }
 
+  renderSaveIcon() {
+    const { modified } = this.state;
+    const messageStyle = Object.assign({}, styles.modifiedMessage);
+    if (modified) {
+      messageStyle.opacity = 0.5;
+    }
+    return <div style={messageStyle}>⟲</div>;
+  }
+
+  render() {
     return (
       <div style={styles.wrapper}>
-        <textarea style={textStyle} value={text} onChange={this.onTextChange} />
+        {this.renderTextarea()}
+        {this.renderSaveIcon()}
       </div>
     );
   }
