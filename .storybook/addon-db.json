@@ -1,0 +1,16 @@
+{
+  "kadirahq/storybook-addon-notes/notes-collection": [
+    {
+      "id": "83d62f29-b5f4-4313-b2bb-522dd3241481",
+      "notes": "Hello World Notes",
+      "sbKind": "Button",
+      "sbStory": "Hello World"
+    },
+    {
+      "id": "49a3957c-96ed-4e87-8a8f-cd0544d2fa98",
+      "notes": "Hello Earth Notes",
+      "sbKind": "Button",
+      "sbStory": "Hello Earth"
+    }
+  ]
+}
